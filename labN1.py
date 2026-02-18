@@ -38,7 +38,7 @@ class Figure(object):
                     N0 += 1
             return A * B * N0 / N
         except (TypeError, ValueError):
-            print("Ошибка при выполнении удара")
+            print("Ошибка при выполнении")
 
 
     def mathematical_expectation(self,iteration, A, B, N):
@@ -56,7 +56,7 @@ class Figure(object):
             squares=[self.square(A,B,N) for i in range (iteration)]
             return sum(squares)/iteration
         except (TypeError, ValueError):
-            print("Ошибка при выполнении удара")
+            print("Ошибка при выполнении")
 
 
     def dispersion(self,iteration, A, B, N):
@@ -76,5 +76,5 @@ class Figure(object):
             squared_mean = sum(s ** 2 for s in squares)/iteration
             return squared_mean - mean ** 2
         except (TypeError, ValueError):
-            print("Ошибка при выполнении удара")
+            print("Ошибка при выполнении")
 
