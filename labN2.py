@@ -1,46 +1,64 @@
 import random
 from math import *
 import sys
+from tabnanny import check
+
 import numpy as np
 
 
 class Figure(object):
     """Класс для представления геометрической фигуры"""
 
-    def __init__(self,x,y):
+    def __init__(self,vertices):
         """
         Инициализация n-угольника.
         Args:
-            x (array): x-координаты заданного n-угольника
-            y (array): y-координаты заданного n-угольника
+            vertices (array): заданынй массив вершин n-угольника
         """
-        self.x = np.array(x, dtype=float)
-        self.y = np.array(y, dtype=float)
-        if len(x) != len(y):
-            raise ValueError("Массивы x и y должны быть одинаковой длины")
+        self.vertices = np.array(vertices)
+        if self.check_orientation()>0:
+            sys.exit('Ошибка:точки должны задаваться по часовой стрелке ')
+
+    def check_orientation(self):
+        """
+        Определение ориентации многоугольника
+        Возвращает:
+            > 0: против часовой стрелки
+            < 0: по часовой стрелке
+            = 0: точки коллинеарны
+        """
+        n = len(self.vertices)
+        if n < 3:
+            return 0  # Для линии или точки
+        area2 = 0
+        for i in range(n):
+            x1, y1 = self.vertices[i]
+            x2, y2 = self.vertices[(i + 1) % n]
+            area2 += (x1 * y2 - x2 * y1)
+        return area2  # Знак показывает ориентацию
 
 
     def square(self,A,B,N):
         """
-        Вычисление площади круга методом Монте-Карло.
+        Вычисление площади n-угольника методом Монте-Карло.
         Args:
             A (float): ширина прямоугольной области
             B (float): высота прямоугольной области
             N (int): количество случайных точек
         Return:
-            float: приблизительная площадь круга
+            float: приблизительная площадь n-угольника
         """
         try:
-            if max(self.x) > A or max(self.y) > B or min(self.x)<0 or min(self.y)<0:
+            x_coords = [v[0] for v in self.vertices]
+            y_coords = [v[1] for v in self.vertices]
+
+            if (max(x_coords) > A or max(y_coords) > B or min(x_coords) < 0 or min(y_coords) < 0):
                 sys.exit('Ошибка:n-угольник не в прямоугольнике')
             N0=0
             for i in range(N):
                 x_i = random.uniform(0, A)
                 y_i = random.uniform(0, B)
-                L = sqrt((self.x0 - x_i) ** 2 + (self.y0 - y_i) ** 2)
-                if L <= self.radius:
-                    N0 += 1
-            return A * B * N0 / N
+
         except (TypeError, ValueError):
             print("Ошибка при выполнении")
 
