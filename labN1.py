@@ -1,5 +1,6 @@
 import random
 from math import *
+import sys
 class Figure(object):
     """Класс для представления геометрической фигуры (круга)"""
 
@@ -29,6 +30,8 @@ class Figure(object):
             float: приблизительная площадь круга
         """
         try:
+            if self.x0 + self.radius > A or self.y0 + self.radius > B:
+                sys.exit('Ошибка:круг не находится в прямоугольнике')
             N0=0
             for i in range(N):
                 x_i = random.uniform(0, A)
