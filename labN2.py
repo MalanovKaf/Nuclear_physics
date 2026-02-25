@@ -9,7 +9,6 @@ import numpy as np
 class Figure(object):
     """Класс для представления геометрической фигуры"""
 
-
     def __init__(self, vertices):
         """
         Инициализация n-угольника.
@@ -19,7 +18,6 @@ class Figure(object):
         self.vertices = np.array(vertices)
         # if self.check_orientation()>0:
         # sys.exit('Ошибка:точки должны задаваться по часовой стрелке ')
-
 
     @staticmethod
     def point_in_figure(point, vertices):
@@ -47,7 +45,6 @@ class Figure(object):
             p1x, p1y = p2x, p2y
         return inside
 
-
     def square(self, A, B, N):
         """
         Вычисление площади n-угольника методом Монте-Карло.
@@ -74,7 +71,6 @@ class Figure(object):
         except (TypeError, ValueError):
             print("Ошибка при выполнении")
 
-
     def mathematical_expectation(self, iteration, A, B, N):
         """
         Вычисление математического ожидания площади.
@@ -91,7 +87,6 @@ class Figure(object):
             return sum(squares) / iteration
         except (TypeError, ValueError):
             print("Ошибка при выполнении")
-
 
     def dispersion(self, iteration, A, B, N):
         """

@@ -9,7 +9,7 @@ def test_square_rectangle():
     A = B = 10
     N = 10000
     # Площадь прямоугольника = 4 * 4 = 8
-    assert abs(rectangle.square(A,B,N)-8)<1
+    assert abs(rectangle.square(A, B, N) - 8) < 1
 
 
 def test_square_triangle():
