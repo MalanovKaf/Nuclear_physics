@@ -1,7 +1,6 @@
-import random
-from math import sqrt
-import sys
 import numpy as np
+import random
+import sys
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -27,34 +26,34 @@ class SourceIzotrop:
         Генерация изотропно распределенных векторов на сфере.
 
         Returns:
-            numpy.ndarray: массив векторов размером (n, 3)
+            numpy.ndarray: массив векторов размером (n, 3) в декартовых координатах
         """
         v_all = np.zeros((self.n, 3))
         for i in range(self.n):
-            r=1
-            Fi=2*np.pi*random.uniform(0,1)
-            teta=np.pi*random.uniform(0,1)
-            v_1 = np.array([r, Fi, teta])
-            v_all[i] = v_1
+            r = 1  # радиус сферы
+            phi = 2 * np.pi * random.uniform(0, 1)
+            theta = np.arccos(2 * random.uniform(0, 1) - 1)
+
+            x = r * np.sin(theta) * np.cos(phi)
+            y = r * np.sin(theta) * np.sin(phi)
+            z = r * np.cos(theta)
+
+            v_all[i] = np.array([x, y, z])
         return v_all
 
     def plot_vectors(self):
         """Построение 3D графика векторов на сфере."""
         vectors = self.vectors()
 
-        # Создание 3D графика
         fig = plt.figure(figsize=(10, 8))
         ax = fig.add_subplot(111, projection='3d')
 
-        # Координаты для построения точек
         x = vectors[:, 0]
         y = vectors[:, 1]
         z = vectors[:, 2]
 
-        # Построение точек на сфере
         ax.scatter(x, y, z, c='blue', marker='o', alpha=0.6, s=30)
 
-        # Добавление сферы для наглядности
         u = np.linspace(0, 2 * np.pi, 50)
         v = np.linspace(0, np.pi, 50)
         sphere_x = np.outer(np.cos(u), np.sin(v))
@@ -63,10 +62,11 @@ class SourceIzotrop:
 
         ax.plot_wireframe(sphere_x, sphere_y, sphere_z, color='gray', alpha=0.2)
 
-        # Настройка графика
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
         ax.set_title(f'Изотропное распределение {self.n} векторов на сфере')
+
+        ax.set_box_aspect([1, 1, 1])
 
         plt.show()
