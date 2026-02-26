@@ -36,7 +36,7 @@ class SourceIzotrop:
                 m = random.uniform(-1, 1)
                 n = random.uniform(-1, 1)
                 s_squared = l ** 2 + m ** 2 + n ** 2
-                if s_squared <= 1 and s_squared > 0:
+                if s_squared <= 1:
                     break
             length = sqrt(s_squared)
             v_1 = np.array([l, m, n]) / length
