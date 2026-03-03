@@ -7,8 +7,18 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 class Source_photon:
-
+    """
+    Класс для моделирования источника фотонов с тремя возможными энергиями
+    """
     def __init__(self, P1, P2, P3, E1, E2, E3, N):
+        """
+        Инициализация источника фотонов
+
+        Parameters:
+        P1, P2, P3: вероятности выхода фотонов с энергиями E1, E2, E3
+        E1, E2, E3: значения энергий фотонов
+        N: общее количество фотонов
+        """
         self.P1 = abs(P1)
         self.P2 = abs(P2)
         self.P3 = abs(P3)
@@ -20,6 +30,9 @@ class Source_photon:
             sys.exit("Сумма выходов источника должна быть 1")
 
     def Energy_diagramma(self):
+        """
+        Генерация распределения фотонов по энергиям и построение гистограммы
+        """
         N1 = 0
         N2 = 0
         N3 = 0
@@ -36,6 +49,8 @@ class Source_photon:
     def plot_histogram(self, N1, N2, N3):
         """
         Построение гистограммы распределения фотонов по энергиям
+        Parameters:
+        n1, n2, n3: количество фотонов с каждой энергией
         """
         energies = [self.E1, self.E2, self.E3]
         counts = [N1, N2, N3]
