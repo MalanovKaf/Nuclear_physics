@@ -56,7 +56,7 @@ class Sphere_intersection:
             D=(b**2)/4 -c
             if D>=0:
                 t1,t2=b/2 +sqrt(D),b/2-sqrt(D)
-                if t1>=0 and t2>=0:
+                if t1>=0 or t2>=0:
                     NS+=1
         return NS/len(V)
 
@@ -72,13 +72,8 @@ class Sphere_intersection:
         distances = []
         probabilities = []
         orig_X, orig_Y, orig_Z = self.X0, self.Y0, self.Z0
-        distances.append(self.R)
-        probabilities.append(self.intersection())
         for i in range(num_distances):
-            if i==0:
-                L=self.R
-            else:
-                L = random.uniform(self.R, max_distance)
+            L = random.uniform(0, max_distance)
             self.X0 = L
             self.Y0 = 0
             self.Z0 = 0
@@ -88,6 +83,7 @@ class Sphere_intersection:
 
             # Восстанавливаем исходные координаты
         self.X0, self.Y0, self.Z0 = orig_X, orig_Y, orig_Z
+        self.L = sqrt(self.X0 ** 2 + self.Y0 ** 2 + self.Z0 ** 2)
         return np.array(distances), np.array(probabilities)
 
     def plot_distance_dependence(self, num_distances, max_distance=None):
