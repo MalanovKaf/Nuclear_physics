@@ -10,6 +10,7 @@ class Source_photon:
     """
     Класс для моделирования источника фотонов с тремя возможными энергиями
     """
+
     def __init__(self, P1, P2, P3, E1, E2, E3, N):
         """
         Инициализация источника фотонов
@@ -44,9 +45,11 @@ class Source_photon:
                 N2 += 1
             else:
                 N3 += 1
-        self.plot_histogram(N1,N2,N3)
+        error1, error2, error3 = sqrt(N1) / self.N, sqrt(N2) / self.N, sqrt(N3) / self.N
+        N1, N2, N3 = N1 / self.N, N2 / self.N, N3 / self.N
+        self.plot_histogram(N1, N2, N3, error1, error2, error3)
 
-    def plot_histogram(self, N1, N2, N3):
+    def plot_histogram(self, N1, N2, N3, error1, error2, error3):
         """
         Построение гистограммы распределения фотонов по энергиям
         Parameters:
@@ -54,12 +57,14 @@ class Source_photon:
         """
         energies = [self.E1, self.E2, self.E3]
         counts = [N1, N2, N3]
+        errors = [error1, error2, error3]
 
         # Создание фигуры
         plt.figure(figsize=(10, 6))
 
         # Столбчатая диаграмма (количество фотонов)
-        bars = plt.bar(range(len(energies)), counts, color=['blue', 'green', 'red'],alpha=0.7)
+        bars = plt.bar(range(len(energies)), counts, yerr=errors, capsize=5, color=['blue', 'green', 'red'], alpha=0.7,
+                       error_kw={'elinewidth': 1, 'ecolor': 'black'})
 
         # Настройка графика
         plt.xlabel('Энергия фотонов')
@@ -70,9 +75,9 @@ class Source_photon:
         # Добавление значений над столбцами
         for bar, count in zip(bars, counts):
             height = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width() / 2., height + 0.01 * max(counts),f'{count}', ha='center', va='bottom', fontsize=11, fontweight='bold')
+            plt.text(bar.get_x() + bar.get_width() / 2., height + 0.01 * max(counts), f'{count}', ha='center',
+                     va='bottom', fontsize=11, fontweight='bold')
 
         # Добавление сетки для лучшей читаемости
         plt.tight_layout()
         plt.show()
-
