@@ -147,9 +147,9 @@ class Cube_intersection:
         Запуск моделирования в соответствии с блок-схемой
         """
         half_d = self.D / 2
-        if (abs(self.Xs) <= half_d and
-                abs(self.Ys) <= half_d and
-                abs(self.Zs) <= half_d):
+        if (abs(self.Xs) < half_d and
+                abs(self.Ys) < half_d and
+                abs(self.Zs) < half_d):
             # Источник внутри куба - все частицы уже "попали"
             return 1.0
         rays = self.ray()
