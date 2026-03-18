@@ -41,6 +41,7 @@ class Cube_intersection:
     [vertices[3], vertices[7], vertices[6], vertices[2], vertices[3]]   # G6: P4,P8,P7,P3,P4
                 ]
         self.P=vertices
+        self.D=D
 
     def ray(self):
         """
@@ -59,6 +60,12 @@ class Cube_intersection:
             v_1 = np.array([l, m, n]) / length
             v_all[i] = v_1
         return v_all
+
+    def set_source_position(self, Xs, Ys, Zs):
+        """Установка нового положения источника"""
+        self.Xs = Xs
+        self.Ys = Ys
+        self.Zs = Zs
 
     def flateABCD (self,P1,P2,P3):
         A=np.linalg.det([[P1[1],P1[2],1], [P2[1],P2[2],1], [P3[1],P3[2],1]])
@@ -139,6 +146,12 @@ class Cube_intersection:
         """
         Запуск моделирования в соответствии с блок-схемой
         """
+        half_d = self.D / 2
+        if (abs(self.Xs) <= half_d and
+                abs(self.Ys) <= half_d and
+                abs(self.Zs) <= half_d):
+            # Источник внутри куба - все частицы уже "попали"
+            return 1.0
         rays = self.ray()
         hit_count = 0 # Счетчик попаданий
         for i in range (self.N):
@@ -152,9 +165,75 @@ class Cube_intersection:
                     if self.inside(P_cross, face):
                         hit_count += 1
                         break
-        print(f"Результат моделирования:")
-        print(f"Всего частиц: {self.N}")
-        print(f"Попаданий в куб: {hit_count}")
-        print(f"Вероятность попадания: {hit_count / self.N:.4f}")
+        return hit_count/self.N
 
-        return hit_count
+    def plot_distance_dependence(self, source_positions=None, num_positions=15, random_range=(0.5, 8)):
+        """
+        Построение графика зависимости вероятности от расстояния
+        для положений источника вдоль оси X
+        """
+        # Если позиции не заданы, генерируем вдоль оси X
+        if source_positions is None:
+            source_positions = []
+            distances = np.linspace(random_range[0], random_range[1], num_positions)
+            for L in distances:
+                source_positions.append((L, 0, 0))
+
+        distances = []
+        probabilities = []
+
+        original_N = self.N
+        if self.N > 5000:
+            self.N = 3000
+
+        for Xs, Ys, Zs in source_positions:
+            self.set_source_position(Xs, Ys, Zs)
+            L = sqrt(Xs ** 2 + Ys ** 2 + Zs ** 2)
+            prob = self.run_simulation()
+            distances.append(L)
+            probabilities.append(prob)
+
+        # Восстанавливаем исходное количество частиц
+        if original_N != self.N:
+            self.N = original_N
+
+        # Добавляем точки для создания ступеньки
+        boundary = self.D / 2
+
+        # Сортируем исходные данные
+        sorted_data = sorted(zip(distances, probabilities))
+        distances_sorted, probabilities_sorted = zip(*sorted_data)
+
+        # Преобразуем в списки для вставки
+        distances_list = list(distances_sorted)
+        probabilities_list = list(probabilities_sorted)
+
+        # Находим позицию для вставки границы
+        insert_pos = 0
+        for i, d in enumerate(distances_list):
+            if d > boundary:
+                insert_pos = i
+                break
+
+        # Вставляем две точки на границе
+        distances_list.insert(insert_pos, boundary)
+        probabilities_list.insert(insert_pos, 1.0)
+
+        distances_list.insert(insert_pos + 1, boundary)
+        probabilities_list.insert(insert_pos + 1, 0.5)
+
+        # Создание графика
+        plt.figure(figsize=(12, 7))
+        plt.plot(distances_list, probabilities_list, 'o-', linewidth=2, markersize=8,
+                 label=f'Моделирование (N={self.N})', markeredgewidth=2)
+        plt.grid(True, alpha=0.3, linestyle='--', linewidth=0.5)
+        plt.xlabel('Расстояние до центра куба L (вдоль оси X)', fontsize=12)
+        plt.ylabel('Вероятность попадания P', fontsize=12)
+        plt.title(f'Зависимость вероятности попадания частиц в куб от расстояния\n'
+                  f'Размер куба D={self.D}, количество частиц N={self.N}',
+                  fontsize=14, fontweight='bold')
+        plt.legend(loc='upper right', fontsize=11)
+        plt.tight_layout()
+        plt.show()
+
+        return distances, probabilities
