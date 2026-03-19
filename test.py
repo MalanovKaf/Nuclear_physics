@@ -7,7 +7,7 @@ def test_cube_probability_d4_l0():
     cube = Cube_intersection(Xs=0, Ys=0, Zs=0, D=4, N=10000)
     prob = cube.run_simulation()
     expected = 1.0
-    assert abs(prob - expected) < 0.01
+    assert abs(prob - expected) == 0
 
 def test_cube_probability_d4_l2():
     """
