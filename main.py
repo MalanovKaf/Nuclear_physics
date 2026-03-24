@@ -1,6 +1,6 @@
 from LabN7 import *
 
-cube = CubeIntersection(Xs=1.0, Ys=1, Zs=1, D=2.0, N=5000)
+cube = CubeIntersection(Xs=3.0, Ys=0, Zs=0, D=4, N=5000)
 
 # Запуск моделирования
 probability = cube.run_simulation()
@@ -8,4 +8,4 @@ print(f"Вероятность попадания: {probability:.4f} ({probabili
 
 # Построение зависимости от расстояния
 print("\nПостроение зависимости от расстояния...")
-cube.plot_distance_dependence(num_points=70, N_mc=5000)
+cube.plot_distance_dependence(num_points=40, N_mc=4000)
