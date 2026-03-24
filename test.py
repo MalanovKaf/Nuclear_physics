@@ -8,7 +8,7 @@ def test_cube_probability_d4_l0():
     prob = cube.run_simulation()
     print(f"Вероятность попадания внутри: {prob:.4f} ({prob * 100:.2f}%)")
     expected = 1.0
-    assert abs(prob - expected) < 0.01
+    assert abs(prob - expected) == 0
 
 def test_cube_probability_d4_l2():
     """
