@@ -18,7 +18,7 @@ def test_cube_probability_d4_l2():
     prob = cube.run_simulation()
     print(f"Вероятность попадания на грани: {prob:.4f} ({prob * 100:.2f}%)")
     expected = 0.5
-    assert abs(prob - expected) < 0.02, f"Expected ~{expected}, got {prob}"
+    assert abs(prob - expected) == 0
 
 def test_cube_edge_mid_xy():
     """Тест 5: середина ребра (2,2,0) -> 25%"""
@@ -36,7 +36,11 @@ def test_cube_vertex():
 
 if __name__ == "__main__":
     test_cube_probability_d4_l0()
+    print("Тест 1 прошел успешно")
     test_cube_probability_d4_l2()
+    print("Тест 2 прошел успешно")
     test_cube_edge_mid_xy()
+    print("Тест 3 прошел успешно")
     test_cube_vertex()
+    print("Тест 4 прошел успешно")
     print("Все тесты прошли успешно!")
