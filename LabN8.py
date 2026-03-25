@@ -42,8 +42,9 @@ class GammaInteraction:
         self.num_channels = 1024
         self.Cch = (self.E_max - self.E_min) / self.num_channels  # цена канала
         self.spectrum = [0] * self.num_channels
-
-    def ray(self):
+        self._init_planes()
+    @staticmethod
+    def ray():
         """
         Генерация случайного направления луча (изотропный источник)
         Возвращает единичный направляющий вектор (l, m, n)
@@ -57,6 +58,25 @@ class GammaInteraction:
                 break
         length = math.sqrt(length_sq)
         return (l / length, m / length, n / length)
+
+    def _init_planes(self):
+        """
+        Инициализация плоскостей верхнего и нижнего торцов цилиндра
+        """
+        # Верхняя плоскость (z = d)
+        P1_top = (0, 0, self.d)
+        P2_top = (self.R, 0, self.d)
+        P3_top = (0, self.R, self.d)
+        self.F_top = self.flateABCD(P1_top, P2_top, P3_top)
+
+        # Нижняя плоскость (z = -d)
+        P1_bottom = (0, 0, -self.d)
+        P2_bottom = (self.R, 0, -self.d)
+        P3_bottom = (0, self.R, -self.d)
+        self.F_bottom = self.flateABCD(P1_bottom, P2_bottom, P3_bottom)
+
+        # Координаты источника
+        self.Ps = (self.XO, self.YO, self.ZO)
 
     def flateABCD(self, P1, P2, P3):
         """
@@ -249,3 +269,120 @@ class GammaInteraction:
             return 'ph'
         else:
             return 'k'
+
+    def find_entry_point(self, ray_direction):
+        """
+        Находит точку входа фотона в детектор
+        Возвращает точку входа (x, y, z) или None, если луч не пересекает детектор
+        """
+        l, m, n = ray_direction
+        # Пересечение с верхним торцом
+        t_top, P_top = self.crossFlat(ray_direction, self.Ps, self.F_top)
+        hit_top = False
+        t_entry = None
+        P_entry = None
+
+        if t_top is not None and self.insideFlat(self.R, P_top):
+            hit_top = True
+            t_entry = t_top
+            P_entry = P_top
+        # Пересечение с нижним торцом
+        t_bottom, P_bottom = self.crossFlat(ray_direction, self.Ps, self.F_bottom)
+        hit_bottom = False
+        if t_bottom is not None and self.insideFlat(self.R, P_bottom):
+            hit_bottom = True
+            if not hit_top or t_bottom < t_entry:
+                t_entry = t_bottom
+                P_entry = P_bottom
+        # Пересечение с цилиндром
+        t_cyl, P_cyl = self.crossCil(ray_direction)
+        hit_cyl = False
+        if t_cyl is not None and self.insideCil(P_cyl):
+            hit_cyl = True
+            # Проверяем, что это ближайшее пересечение
+            if (not hit_top and not hit_bottom) or \
+                    (hit_top and t_cyl < t_entry) or \
+                    (hit_bottom and t_cyl < t_entry):
+                t_entry = t_cyl
+                P_entry = P_cyl
+        # Если нет пересечения с детектором
+        if not (hit_top or hit_bottom or hit_cyl):
+            return None
+        return P_entry
+
+    def simulate(self):
+        """
+        Основной метод моделирования взаимодействия гамма-квантов с детектором
+        """
+        for event in range(self.N_events):
+            # Начальная энергия для Cs-137
+            E = 0.662  # МэВ
+            # Начальное направление
+            l, m, n = self.ray()
+            # Находим точку входа в детектор
+            P_entry = self.find_entry_point((l, m, n))
+            if P_entry is None:
+                # Фотон не попал в детектор
+                continue
+            # Фотон внутри детектора
+            current_point = P_entry
+            while E > 0:
+                # Сечения для текущей энергии
+                sigma_ph_Na = self.sigmaPh(E, self.Z_Na)
+                sigma_ph_I = self.sigmaPh(E, self.Z_I)
+                sigma_k_Na = self.sigmaK(E, self.Z_Na)
+                sigma_k_I = self.sigmaK(E, self.Z_I)
+                Sigma_ph, Sigma_k, Sigma_total = self.Sigma(
+                    [sigma_ph_Na, sigma_ph_I],
+                    [sigma_k_Na, sigma_k_I]
+                )
+                if Sigma_total <= 0:
+                    break
+                # Длина свободного пробега
+                L = self.Length(Sigma_total)
+                # Точка взаимодействия
+                P_int = self.Interaction(current_point, l, m, n, L)
+                # Проверяем, что взаимодействие внутри детектора
+                if not self.insideCil(P_int):
+                    # Фотон покинул детектор без взаимодействия
+                    break
+                # Разыгрываем тип взаимодействия
+                interaction_type = self.Lottery(Sigma_ph, Sigma_k, Sigma_total)
+                if interaction_type == 'ph':
+                    # Фотоэффект - вся энергия поглощена
+                    channel = int(round(E / self.Cch))
+                    if 0 <= channel < self.num_channels:
+                        self.spectrum[channel] += 1
+                    break
+                elif interaction_type == 'k':
+                    # Комптон-эффект
+                    # Новое направление
+                    l_new, m_new, n_new = self.ray()
+                    # Косинус угла между старым и новым направлением
+                    cos_theta = self.cost(l, m, n, l_new, m_new, n_new)
+                    # Потерянная энергия
+                    dE = self.Eloss(cos_theta, E)
+                    # Регистрируем потерянную энергию
+                    if dE > 0:
+                        channel = int(round(dE / self.Cch))
+                        if 0 <= channel < self.num_channels:
+                            self.spectrum[channel] += 1
+                    # Обновляем энергию фотона
+                    E = E - dE
+                    # Обновляем направление
+                    l, m, n = l_new, m_new, n_new
+                    # Обновляем текущую точку
+                    current_point = P_int
+
+    def plot_spectrum(self):
+        """
+        Построение энергетического спектра
+        """
+        plt.figure(figsize=(10, 6))
+        energies = [self.E_min + i * self.Cch for i in range(self.num_channels)]
+        plt.plot(energies, self.spectrum, 'b-', linewidth=1)
+        plt.xlabel('Энергия (МэВ)')
+        plt.ylabel('Количество отсчетов')
+        plt.title('Энергетический спектр гамма-излучения Cs-137 в детекторе NaI')
+        plt.grid(True, alpha=0.3)
+        plt.show()
