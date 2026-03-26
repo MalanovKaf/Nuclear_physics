@@ -2,6 +2,7 @@ import random
 from math import sqrt
 import numpy as np
 import matplotlib.pyplot as plt
+import math
 
 class CubeIntersection:
     """
@@ -253,10 +254,14 @@ class CubeIntersection:
         for i, L in enumerate(L_theory):
             if L < d - 1e-10:
                 P_theory[i] = 1.0
-            elif abs(L - d) < 1e-6:
+            elif abs(L - d) < 1e-9:
                 P_theory[i] = 0.5
             else:
-                P_theory[i] = 0.5 * (d ** 2) / (L ** 2)
+                D = 2 * d
+                h = L - d
+
+                omega = 4 * math.atan(D ** 2 / (2 * h * math.sqrt(4 * h ** 2 + 2 * D ** 2)))
+                P_theory[i] = omega / (4 * math.pi)
 
 
         plt.figure(figsize=(12, 7))

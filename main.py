@@ -6,4 +6,4 @@ probability = cube.run_simulation()
 print(f"Вероятность попадания: {probability:.4f} ({probability * 100:.2f}%)")
 
 print("\nПостроение зависимости от расстояния...")
-cube.plot_distance_dependence(num_points=100, N_mc=1000)
+cube.plot_distance_dependence(num_points=50, N_mc=1000)
