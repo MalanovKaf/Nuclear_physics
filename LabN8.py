@@ -340,25 +340,23 @@ class GammaInteraction:
                     break
                 # Длина свободного пробега
                 L = self.Length(Sigma_total)
-                # Точка взаимодействия
+
                 P_int = self.Interaction(current_point, l, m, n, L)
-                # Проверяем, что взаимодействие внутри детектора
+
                 if not self.insideCil(P_int):
-                    # Фотон покинул детектор без взаимодействия
+
                     break
-                # Разыгрываем тип взаимодействия
                 interaction_type = self.Lottery(Sigma_ph, Sigma_k, Sigma_total)
                 if interaction_type == 'ph':
-                    # Фотоэффект - вся энергия поглощена
+
                     channel = int(round(E / self.Cch))
                     if 0 <= channel < self.num_channels:
                         self.spectrum[channel] += 1
                     break
                 elif interaction_type == 'k':
-                    # Комптон-эффект
-                    # Новое направление
+
                     l_new, m_new, n_new = self.ray()
-                    # Косинус угла между старым и новым направлением
+
                     cos_theta = self.cost(l, m, n, l_new, m_new, n_new)
                     # Потерянная энергия
                     dE = self.Eloss(cos_theta, E)
