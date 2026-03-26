@@ -69,17 +69,14 @@ class CubeIntersection:
         x2, y2, z2 = P2
         x3, y3, z3 = P3
 
-        # Векторы в плоскости
         v1 = [x2 - x1, y2 - y1, z2 - z1]
         v2 = [x3 - x1, y3 - y1, z3 - z1]
 
-        # Нормаль (векторное произведение)
         A = v1[1] * v2[2] - v1[2] * v2[1]
         B = v1[2] * v2[0] - v1[0] * v2[2]
         C = v1[0] * v2[1] - v1[1] * v2[0]
         D = -(A * x1 + B * y1 + C * z1)
 
-        # Нормировка
         norm = sqrt(A ** 2 + B ** 2 + C ** 2)
         if norm > 0:
             A, B, C, D = A / norm, B / norm, C / norm, D / norm
@@ -165,24 +162,21 @@ class CubeIntersection:
         """
         Проверка, лежит ли точка внутри грани (3D -> 2D проекция)
         """
-        # Нормаль грани
+
         v1 = np.array(face_vertices[1]) - np.array(face_vertices[0])
         v2 = np.array(face_vertices[2]) - np.array(face_vertices[0])
         normal = np.cross(v1, v2)
         normal = normal / np.linalg.norm(normal)
 
-        # Выбор плоскости проекции
+
         abs_normal = np.abs(normal)
         if abs_normal[0] > abs_normal[1] and abs_normal[0] > abs_normal[2]:
-            # Проекция на YZ
             proj_vertices = [(v[1], v[2]) for v in face_vertices]
             proj_point = (point[1], point[2])
         elif abs_normal[1] > abs_normal[2]:
-            # Проекция на XZ
             proj_vertices = [(v[0], v[2]) for v in face_vertices]
             proj_point = (point[0], point[2])
         else:
-            # Проекция на XY
             proj_vertices = [(v[0], v[1]) for v in face_vertices]
             proj_point = (point[0], point[1])
 
@@ -202,22 +196,17 @@ class CubeIntersection:
         Запуск моделирования
         Возвращает вероятность попадания
         """
-        # Специальный случай: источник внутри куба
+
         if (abs(self.Xs) < self.half_d and
                 abs(self.Ys) < self.half_d and
                 abs(self.Zs) < self.half_d):
             return 1.0
-
-        # Специальный случай: источник на грани
         if self.is_source_on_face():
             return 0.5
-
         hit_count = 0
         rays = self.generate_rays()
-
         for i in range(self.N):
             ray = rays[i]
-
             for j, face in enumerate(self.faces):
                 point, t = self.find_intersection(ray, self.face_planes[j])
 
@@ -238,15 +227,10 @@ class CubeIntersection:
         """
         if N_mc is None:
             N_mc = self.N
-
         original_N = self.N
         self.N = N_mc
-
-        # Генерация расстояний
         if distances is None:
             distances = np.linspace(0.5, 10, num_points)
-
-        # Сохраняем исходное положение источника
         original_Xs, original_Ys, original_Zs = self.Xs, self.Ys, self.Zs
 
         probabilities = []
@@ -257,11 +241,11 @@ class CubeIntersection:
             prob = self.run_simulation()
             probabilities.append(prob)
 
-        # Восстанавливаем исходное положение
+
         self.set_source_position(original_Xs, original_Ys, original_Zs)
         self.N = original_N
 
-        # Теоретическая кривая
+
         L_theory = np.linspace(0.1, 10, 2000)
         P_theory = np.zeros_like(L_theory)
         d = self.half_d
@@ -274,23 +258,23 @@ class CubeIntersection:
             else:
                 P_theory[i] = 0.5 * (d ** 2) / (L ** 2)
 
-        # Построение графика
+
         plt.figure(figsize=(12, 7))
 
-        # Точки Монте-Карло
+
         plt.plot(distances, probabilities, 'b.', alpha=0.5, markersize=8,
                  label=f'Монте-Карло (N={N_mc})')
 
-        # Теоретическая кривая
+
         plt.plot(L_theory, P_theory, 'r-', linewidth=2.5,
                  label=r'Теория: $P=1$ при $L<d$, $P=0.5$ при $L=d$, $P=0.5(d/L)^2$ при $L>d$')
 
-        # Вертикальная линия на грани
+
         plt.axvline(x=d, color='gray', linestyle='--', linewidth=1.5, alpha=0.7,
                     label=f'Грань куба (L = {d:.2f})')
 
-        # Точка на грани
-        plt.plot(d, 0.5, 'ro', markersize=8, label='Теоретическое значение на грани')
+
+
 
         plt.xlabel('Расстояние L от источника до центра куба', fontsize=12)
         plt.ylabel('Вероятность попадания P', fontsize=12)
