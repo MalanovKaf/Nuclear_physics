@@ -2,10 +2,13 @@ import math
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+from multiprocessing import Pool, Manager
+import os
+import time
 
 
 class GammaInteraction:
-    def __init__(self):
+    def __init__(self, R=None, D=None, XO=None, YO=None, ZO=None, N_events=None):
         """
         Инициализация параметров детектора, источника и физических констант
         """
@@ -23,8 +26,33 @@ class GammaInteraction:
         self.N_Na = n_molecules  # атомов Na/см³
         self.N_I = n_molecules  # атомов I/см³
 
-        # Ввод параметров детектора и источника
-        print("Введите параметры детектора :")
+        # Проверяем, были ли переданы параметры
+        if R is not None and D is not None and XO is not None and YO is not None and ZO is not None and N_events is not None:
+            # Используем переданные параметры
+            self.R = R
+            self.D = D
+            self.d = D / 2
+            self.XO = XO
+            self.YO = YO
+            self.ZO = ZO
+            self.N_events = N_events
+            self._params_initialized = True
+        else:
+            # Запрашиваем ввод только для основного объекта
+            self._input_parameters()
+            self._params_initialized = True
+
+        # Параметры спектра
+        self.E_min = 0.05
+        self.E_max = 1.0
+        self.num_channels = 1024
+        self.Cch = (self.E_max - self.E_min) / self.num_channels  # цена канала
+        self.spectrum = [0] * self.num_channels
+        self._init_planes()
+
+    def _input_parameters(self):
+        """Метод для ввода параметров (вызывается только один раз)"""
+        print("Введите параметры детектора:")
         self.R = float(input("Радиус цилиндра R (см): "))
         self.D = float(input("Высота цилиндра D (см): "))
         self.d = self.D / 2
@@ -36,13 +64,6 @@ class GammaInteraction:
 
         self.N_events = int(input("\nКоличество событий: "))
 
-        # Параметры спектра
-        self.E_min = 0.05
-        self.E_max = 1.0
-        self.num_channels = 1024
-        self.Cch = (self.E_max - self.E_min) / self.num_channels  # цена канала
-        self.spectrum = [0] * self.num_channels
-        self._init_planes()
     @staticmethod
     def ray():
         """
@@ -281,12 +302,10 @@ class GammaInteraction:
         hit_top = False
         t_entry = None
         P_entry = None
-
         if t_top is not None and self.insideFlat(self.R, P_top):
             hit_top = True
             t_entry = t_top
             P_entry = P_top
-        # Пересечение с нижним торцом
         t_bottom, P_bottom = self.crossFlat(ray_direction, self.Ps, self.F_bottom)
         hit_bottom = False
         if t_bottom is not None and self.insideFlat(self.R, P_bottom):
@@ -294,83 +313,140 @@ class GammaInteraction:
             if not hit_top or t_bottom < t_entry:
                 t_entry = t_bottom
                 P_entry = P_bottom
-        # Пересечение с цилиндром
         t_cyl, P_cyl = self.crossCil(ray_direction)
         hit_cyl = False
         if t_cyl is not None and self.insideCil(P_cyl):
             hit_cyl = True
-            # Проверяем, что это ближайшее пересечение
             if (not hit_top and not hit_bottom) or \
                     (hit_top and t_cyl < t_entry) or \
                     (hit_bottom and t_cyl < t_entry):
                 t_entry = t_cyl
                 P_entry = P_cyl
-        # Если нет пересечения с детектором
         if not (hit_top or hit_bottom or hit_cyl):
             return None
         return P_entry
 
+    def simulate_single_event(self):
+        """
+        Моделирование одного события (для использования в параллельных вычислениях)
+        Возвращает список зарегистрированных энергий
+        """
+        energies = []
+        E = 0.662  # МэВ
+        l, m, n = self.ray()
+        P_entry = self.find_entry_point((l, m, n))
+        if P_entry is None:
+            return energies
+        current_point = P_entry
+        while E > 0:
+            sigma_ph_Na = self.sigmaPh(E, self.Z_Na)
+            sigma_ph_I = self.sigmaPh(E, self.Z_I)
+            sigma_k_Na = self.sigmaK(E, self.Z_Na)
+            sigma_k_I = self.sigmaK(E, self.Z_I)
+            Sigma_ph, Sigma_k, Sigma_total = self.Sigma(
+                [sigma_ph_Na, sigma_ph_I],
+                [sigma_k_Na, sigma_k_I]
+            )
+            if Sigma_total <= 0:
+                break
+            L = self.Length(Sigma_total)
+            P_int = self.Interaction(current_point, l, m, n, L)
+            if not self.insideCil(P_int):
+                break
+            interaction_type = self.Lottery(Sigma_ph, Sigma_k, Sigma_total)
+            if interaction_type == 'ph':
+                energies.append(E)
+                break
+            elif interaction_type == 'k':
+                l_new, m_new, n_new = self.ray()
+                cos_theta = self.cost(l, m, n, l_new, m_new, n_new)
+                dE = self.Eloss(cos_theta, E)
+                if dE > 0:
+                    energies.append(dE)
+                E = E - dE
+                l, m, n = l_new, m_new, n_new
+                current_point = P_int
+        return energies
+
     def simulate(self):
         """
-        Основной метод моделирования взаимодействия гамма-квантов с детектором
+        Основной метод последовательного моделирования
         """
+        print(f"\nЗапускаем последовательное моделирование...")
+        print(f"Всего событий: {self.N_events}")
+        start_time = time.time()
+        self.spectrum = [0] * self.num_channels  # Сброс спектра
         for event in range(self.N_events):
-            # Начальная энергия для Cs-137
-            E = 0.662  # МэВ
-            # Начальное направление
-            l, m, n = self.ray()
-            # Находим точку входа в детектор
-            P_entry = self.find_entry_point((l, m, n))
-            if P_entry is None:
-                # Фотон не попал в детектор
-                continue
-            # Фотон внутри детектора
-            current_point = P_entry
-            while E > 0:
-                # Сечения для текущей энергии
-                sigma_ph_Na = self.sigmaPh(E, self.Z_Na)
-                sigma_ph_I = self.sigmaPh(E, self.Z_I)
-                sigma_k_Na = self.sigmaK(E, self.Z_Na)
-                sigma_k_I = self.sigmaK(E, self.Z_I)
-                Sigma_ph, Sigma_k, Sigma_total = self.Sigma(
-                    [sigma_ph_Na, sigma_ph_I],
-                    [sigma_k_Na, sigma_k_I]
-                )
-                if Sigma_total <= 0:
-                    break
-                # Длина свободного пробега
-                L = self.Length(Sigma_total)
+            energies = self.simulate_single_event()
+            for energy in energies:
+                channel = int(round(energy / self.Cch))
+                if 0 <= channel < self.num_channels:
+                    self.spectrum[channel] += 1
+        end_time = time.time()
+        print(f"\nВремя выполнения: {end_time - start_time:.2f} секунд")
 
-                P_int = self.Interaction(current_point, l, m, n, L)
+    @staticmethod
+    def _process_chunk(args):
+        """
+        Статический метод для обработки чанка событий в отдельном процессе
+        args: (n_events, R, D, XO, YO, ZO, E_min, E_max, num_channels)
+        """
+        n_events, R, D, XO, YO, ZO, E_min, E_max, num_channels = args
+        detector = GammaInteraction(R, D, XO, YO, ZO, n_events)
+        detector.E_min = E_min
+        detector.E_max = E_max
+        detector.num_channels = num_channels
+        detector.Cch = (E_max - E_min) / num_channels
+        detector.spectrum = [0] * num_channels
+        for _ in range(n_events):
+            energies = detector.simulate_single_event()
+            for energy in energies:
+                channel = int(round(energy / detector.Cch))
+                if 0 <= channel < num_channels:
+                    detector.spectrum[channel] += 1
+        return detector.spectrum
 
-                if not self.insideCil(P_int):
+    def simulate_parallel(self, n_workers=None):
+        """
+        Параллельное моделирование с использованием multiprocessing.Pool
+        n_workers - количество процессов (по умолчанию - количество ядер CPU)
+        """
+        if n_workers is None:
+            n_workers = os.cpu_count()
+        print(f"\nЗапускаем параллельное моделирование...")
+        print(f"Всего событий: {self.N_events}")
+        print(f"Используется процессов: {n_workers}")
+        start_time = time.time()
+        chunk_size = self.N_events // n_workers
+        remainder = self.N_events % n_workers
+        chunks = []
+        for i in range(n_workers):
+            size = chunk_size + (1 if i < remainder else 0)
+            if size > 0:
+                chunks.append(size)
+        print(f"Распределение событий: {chunks}")
 
-                    break
-                interaction_type = self.Lottery(Sigma_ph, Sigma_k, Sigma_total)
-                if interaction_type == 'ph':
-
-                    channel = int(round(E / self.Cch))
-                    if 0 <= channel < self.num_channels:
-                        self.spectrum[channel] += 1
-                    break
-                elif interaction_type == 'k':
-
-                    l_new, m_new, n_new = self.ray()
-
-                    cos_theta = self.cost(l, m, n, l_new, m_new, n_new)
-                    # Потерянная энергия
-                    dE = self.Eloss(cos_theta, E)
-                    # Регистрируем потерянную энергию
-                    if dE > 0:
-                        channel = int(round(dE / self.Cch))
-                        if 0 <= channel < self.num_channels:
-                            self.spectrum[channel] += 1
-                    # Обновляем энергию фотона
-                    E = E - dE
-                    # Обновляем направление
-                    l, m, n = l_new, m_new, n_new
-                    # Обновляем текущую точку
-                    current_point = P_int
+        args_list = []
+        for chunk in chunks:
+            args_list.append((
+                chunk,
+                self.R,
+                self.D,
+                self.XO,
+                self.YO,
+                self.ZO,
+                self.E_min,
+                self.E_max,
+                self.num_channels
+            ))
+        with Pool(processes=n_workers) as pool:
+            results = pool.map(self._process_chunk, args_list)
+        self.spectrum = [0] * self.num_channels
+        for result_spectrum in results:
+            for i, count in enumerate(result_spectrum):
+                self.spectrum[i] += count
+        end_time = time.time()
+        print(f"\nВремя выполнения: {end_time - start_time:.2f} секунд")
 
     def plot_spectrum(self):
         """
@@ -384,3 +460,20 @@ class GammaInteraction:
         plt.title('Энергетический спектр гамма-излучения Cs-137 в детекторе NaI')
         plt.grid(True, alpha=0.3)
         plt.show()
+
+
+if __name__ == "__main__":
+    detector = GammaInteraction()
+    mode = input("\nВыберите режим моделирования (1 - последовательный, 2 - параллельный): ")
+    if mode == "1":
+        detector.simulate()
+    elif mode == "2":
+        n_workers = input("Количество процессов (Enter для автоопределения): ")
+        if n_workers.strip():
+            detector.simulate_parallel(int(n_workers))
+        else:
+            detector.simulate_parallel()
+    else:
+        print("Неверный выбор!")
+        exit()
+    detector.plot_spectrum()
